@@ -4,6 +4,10 @@
 #include <sys/sysinfo.h>
 #include <fstream>
 
+void usage ( const std::string name ) {
+    std::cout << "Error! Invalid input." << std::endl << name << " <BLE Tag MAC>" << std::endl;
+}
+
 std::string runCmd(const std::string& command) {
     char psBuffer[256];
     FILE*   pPipe;
@@ -24,11 +28,11 @@ std::string runCmd(const std::string& command) {
 }
 
 struct systemData {
-    int temperature;
+    signed temperature;
     long totalram, freeram, load[3];
     std::string localIP, uptime, memunit;
 
-    bool init() {
+    bool init() { // Also refreshes the data
         struct sysinfo info;
         if ( sysinfo( &info ) != 0 ) return false;
 
@@ -45,13 +49,13 @@ struct systemData {
         if ( info.mem_unit == ( 1024 * 1024 * 1024 * 1024 ) ) this->memunit = 'TB'; // How?
 
         unsigned long rounded = ( info.uptime / 60 ) + 1;
-        this->uptime = ( rounded % 60 ) + "mins";
+        this->uptime = ( rounded % 60 ) + " mins";
         rounded /= 60;
         if ( rounded > 0 ) {
-            this->uptime = ( rounded % 24 ) + "hours, " + this->uptime;
+            this->uptime = ( rounded % 24 ) + " hours, " + this->uptime;
             rounded /= 24;
 
-            if ( rounded > 0 ) this->uptime = rounded + "days, " + this->uptime;
+            if ( rounded > 0 ) this->uptime = rounded + " days, " + this->uptime;
         }
 
         // Get temperature and round it
@@ -67,3 +71,10 @@ struct systemData {
         return true;
     }
 };
+
+int main ( int argc, const char *argv[] ) {
+    if ( argc != 2 ) {
+        usage(argv[0]);
+        return 1;
+    }
+}
