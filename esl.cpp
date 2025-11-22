@@ -1,6 +1,8 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
+#include <sstream>
 #include <sys/sysinfo.h>
 #include <fstream>
 
@@ -9,7 +11,7 @@
 #include <array>
 
 void usage ( const std::string name ) {
-    std::cout << "Error! Invalid input." << std::endl << name << " <BLE Tag MAC>" << std::endl;
+    std::cout << "Error! Invalid input." << std::endl << name << " <Local Device Name (18 chars max)> <BLE Tag MAC>" << std::endl;
 }
 
 std::string runCmd(const char* cmd) {
@@ -26,9 +28,9 @@ std::string runCmd(const char* cmd) {
 }
 
 struct systemData {
-    __int16_t temperature;
-    __uint16_t totalram, freeram;
-    std::string localIP, uptime, memunit, load;
+    uint8_t temperature, memunit, localIP[4];
+    uint16_t totalram, freeram, load[3];
+    uint32_t uptime; // in minutes
 
     bool init() { // Also refreshes the data
         struct sysinfo info;
@@ -36,53 +38,77 @@ struct systemData {
 
         long double totalram = info.totalram * 1.0;
         long double freeram = info.freeram * 1.0;
-        this->memunit = " Bs";
+        this->memunit = 0; // Bytes
         if ( totalram >= 1024 ) {
-            this->memunit = "KBs";
+            this->memunit = 1; // KBs
             totalram /= 1024;
             freeram /= 1024;
         }
         if ( totalram >= 1024 ) {
-            this->memunit = "MBs";
+            this->memunit = 2; // MBs
             totalram /= 1024;
             freeram /= 1024;
         }
         if ( totalram >= 1024 ) {
-            this->memunit = "GBs";
+            this->memunit = 3; // GBs
             totalram /= 1024;
             freeram /= 1024;
         }
-        this->totalram = (int)( totalram * 100 );
-        this->freeram = (int)( freeram * 100 );
+        this->totalram = (int)( totalram * 10 );
+        this->freeram = (int)( freeram * 10 );
 
-        this->load = runCmd( "uptime | awk -F ':' '{ print $NF }' | sed 's!^ !!' | tr -d '\n'" );
+        try {
+            std::string load;
+            int i = 0;
+            std::stringstream loads = (std::stringstream)runCmd( "uptime | awk -F ':' '{ print $NF }' | sed 's!^ !!' | tr -d ' \n'" );
+            while( std::getline(loads, load, ',') && i < 3 ) {
+                this->load[i] = std::stod(load) * 100;
+                i++;
+            }
+        } catch (const std::exception& e) {
+            this->load[0] = 0;
+            this->load[1] = 0;
+            this->load[2] = 0;
+        }
 
-        this->uptime = runCmd( "uptime -p | tr -d '\n'" );
+        try {
+            this->uptime = std::stoi( runCmd( "cat /proc/uptime | cut -d. -f1 | tr -d '\n'" ) ) / 60;
+        } catch (const std::exception& e) {
+            this->uptime = 0;
+        }
 
         // Get temperature and round it
-        std::string reportedTemp = runCmd( "cat /sys/class/thermal/thermal_zone0/temp" );
         try {
+            std::string reportedTemp = runCmd( "cat /sys/class/thermal/thermal_zone0/temp" );
             this->temperature = std::stoi(reportedTemp) / 1000;
         } catch (const std::exception& e) {
-            this->temperature = -274; // Just below absolute zero, fairly clear that something went wrong XD
+            this->temperature = 0;
         }
         
-        this->localIP = runCmd( "hostname -I | cut -d' ' -f1 | tr -d '\n'" );
+        try {
+            std::string ipbit;
+            std::stringstream localIP = (std::stringstream)runCmd( "hostname -I | cut -d' ' -f1 | tr -d ' \n'" );
+            int i = 0;
+            while( std::getline(localIP, ipbit, '.') && i < 4 ) {
+                this->localIP[i] = std::stoi(ipbit);
+                i++;
+            }
+        } catch (const std::exception& e) {
+            this->localIP[0] = 0;
+            this->localIP[1] = 0;
+            this->localIP[2] = 0;
+            this->localIP[3] = 0;
+        }
 
         return true;
     }
 };
 
 int main ( int argc, const char *argv[] ) {
-    /*if ( argc != 2 || strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) ) {
+    if ( argc != 3 || strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) ) {
         usage(argv[0]);
         return 1;
-    }*/
-   systemData test;
-   test.init();
-   std::cout << "Temp: " << test.temperature << std::endl;
-   std::cout << "RAM: " << test.totalram / 100.0 << " / " << test.freeram / 100.0 << " " << test.memunit << std::endl;
-   std::cout << "Loads: " << test.load << std::endl;
-   std::cout << "IP: " << test.localIP << std::endl;
-   std::cout << "Uptime: " << test.uptime << std::endl;
+    }
+
+    const std::string localName = argv[1], tagMAC = argv[2];
 }
