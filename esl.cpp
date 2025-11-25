@@ -14,6 +14,10 @@ extern "C" {
     #include "btferret/btlib.h"
 }
 
+// Use btferret's devices.txt 
+// Change to use your own.
+#define DEVTXT "btferret/devices.txt"
+
 void usage ( const std::string name ) {
     std::cout << "Error! Invalid input." << std::endl << name << " <Local Device Name (18 chars max)> <BLE Tag MAC>" << std::endl;
 }
@@ -36,30 +40,33 @@ struct systemData {
     uint16_t totalram, freeram, load[3];
     uint32_t uptime; // in minutes
 
-    bool init() { // Also refreshes the data
+    void init() { // Also refreshes the data
         struct sysinfo info;
-        if ( sysinfo( &info ) != 0 ) return false;
-
-        long double totalram = info.totalram * 1.0;
-        long double freeram = info.freeram * 1.0;
-        this->memunit = 0; // Bytes
-        if ( totalram >= 1024 ) {
-            this->memunit = 1; // KBs
-            totalram /= 1024;
-            freeram /= 1024;
+        if ( sysinfo( &info ) == 0 ) {
+            long double totalram = info.totalram * 1.0;
+            long double freeram = info.freeram * 1.0;
+            this->memunit = 0; // Bytes
+            if ( totalram >= 1024 ) {
+                this->memunit = 1; // KBs
+                totalram /= 1024;
+                freeram /= 1024;
+            }
+            if ( totalram >= 1024 ) {
+                this->memunit = 2; // MBs
+                totalram /= 1024;
+                freeram /= 1024;
+            }
+            if ( totalram >= 1024 ) {
+                this->memunit = 3; // GBs
+                totalram /= 1024;
+                freeram /= 1024;
+            }
+            this->totalram = (int)( totalram * 10 );
+            this->freeram = (int)( freeram * 10 );
+        } else {
+            this->totalram = 0;
+            this->freeram = 0;
         }
-        if ( totalram >= 1024 ) {
-            this->memunit = 2; // MBs
-            totalram /= 1024;
-            freeram /= 1024;
-        }
-        if ( totalram >= 1024 ) {
-            this->memunit = 3; // GBs
-            totalram /= 1024;
-            freeram /= 1024;
-        }
-        this->totalram = (int)( totalram * 10 );
-        this->freeram = (int)( freeram * 10 );
 
         try {
             std::string load;
@@ -103,8 +110,6 @@ struct systemData {
             this->localIP[2] = 0;
             this->localIP[3] = 0;
         }
-
-        return true;
     }
 };
 
@@ -115,4 +120,9 @@ int main ( int argc, const char *argv[] ) {
     }
 
     const std::string localName = argv[1], tagMAC = argv[2];
+
+    if( init_blue(DEVTXT) == 0 ) return 2; // Init btferret
+
+    close_all; // Close btferret
+    return 0;
 }
