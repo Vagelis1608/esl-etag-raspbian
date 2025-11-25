@@ -193,9 +193,7 @@ int main ( int argc, const char *argv[] ) {
     write_ctic( node, wcharIndex, message, 20 );
     sleep( 3 );
 
-    message[0] = 0xE2; // Force full screen refresh
-    write_ctic( node, wcharIndex, message, 1 );
-
+    bool firstrun = true;
     try{
         while (1) {
             message[0] = 0xEB; // Send data
@@ -220,6 +218,13 @@ int main ( int argc, const char *argv[] ) {
             message[19] = ( sysData.uptime ) & 0xFF;
 
             write_ctic( node, wcharIndex, message, 20 );
+
+            if ( firstrun ) {
+                message[0] = 0xE2; // Force full screen refresh
+                write_ctic( node, wcharIndex, message, 1 );
+                sleep( 3 );
+                firstrun = false;
+            }
             
             disconnect_node( node );
             sleep( 60 );
