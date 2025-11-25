@@ -5,10 +5,10 @@
 #include <sstream>
 #include <sys/sysinfo.h>
 #include <fstream>
-
 #include <memory>
 #include <stdexcept>
 #include <array>
+#include <unistd.h>
 
 extern "C" {
     #include "btferret/btlib.h"
@@ -17,6 +17,12 @@ extern "C" {
 // Use btferret's devices.txt 
 // Change to use your own.
 #define DEVTXT "btferret/devices.txt"
+
+// L3N@ Write Characteristic
+#define TAG_LE_WAIT 750 // in ms, btferret default
+#define WCHAR_UUID "1F1F" //(( 0x1F<<8 ) + 0x1F )
+#define WCHAR_HANDLE 0x001A
+#define WCHAR_PERMIT 0x12 // 18 - wan
 
 void usage ( const std::string name ) {
     std::cout << "Error! Invalid input." << std::endl << name << " <Local Device Name (18 chars max)> <BLE Tag MAC>" << std::endl;
@@ -73,7 +79,7 @@ struct systemData {
             int i = 0;
             std::stringstream loads = (std::stringstream)runCmd( "uptime | awk -F ':' '{ print $NF }' | sed 's!^ !!' | tr -d ' \n'" );
             while( std::getline(loads, load, ',') && i < 3 ) {
-                this->load[i] = std::stod(load) * 100;
+                this->load[i] = std::stod(load) * 10;
                 i++;
             }
         } catch (const std::exception& e) {
@@ -113,6 +119,21 @@ struct systemData {
     }
 };
 
+int getNodeIndex ( std::stringstream allnodes, const char *eslmac ) {
+    int node;
+    try {
+        std::string buff;
+        while( std::getline(allnodes, buff, '\n') ) {
+            if ( buff.find( eslmac ) != std::string::npos ) {
+                return std::stoi( buff.substr( 0, buff.find_first_of( ' ' ) ) );
+            }
+        }
+    }  catch (const std::exception& e) {
+        throw e;
+    }
+    return -1;
+}
+
 int main ( int argc, const char *argv[] ) {
     if ( argc != 3 || strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) == 0 ) {
         usage(argv[0]);
@@ -121,7 +142,88 @@ int main ( int argc, const char *argv[] ) {
 
     const std::string localName = argv[1], tagMAC = argv[2];
 
-    if( init_blue(DEVTXT) == 0 ) return 2; // Init btferret
+    systemData sysData;
+    sysData.init();
+
+    if( init_blue(DEVTXT) == 0 ) {
+        std::cerr << "btferret failed to init." << std::endl;
+        return 2; // Init btferret
+    }
+
+    le_scan();
+    char *devInfoBuff = new char[1024];
+    device_info_ex( BTYPE_LE | BTYPE_DISCONNECTED, devInfoBuff, 1024 );
+    std::string devInfo = devInfoBuff;
+    delete[] devInfoBuff;
+    
+    int node = getNodeIndex((std::stringstream)devInfo, tagMAC.c_str());
+    if ( node < 0 ) {
+        std::cerr << "Failed to find node of device with MAC: " << tagMAC << std::endl;
+        close_all;
+        return 3;
+    }
+    set_le_wait( TAG_LE_WAIT );
+    connect_node( node, CHANNEL_LE, 0 );
+
+    if ( find_ctics( node ) < 0 ) {
+        std::cerr << "Failed to find characteristics of device with MAC: " << tagMAC << std::endl;
+        close_all;
+        return 4;
+    }
+
+    int wcharIndex = find_ctic_index( node, UUID_2, strtohex( WCHAR_UUID, NULL ) );
+    if ( wcharIndex < 0 ) {
+        std::cerr << "Failed to find characteristic with UUID: " << WCHAR_UUID << std::endl;
+        close_all;
+        return 5;
+    }
+
+    __u8 message[20] = {0};
+
+    message[0] = 0xEA; // Set name and memunit
+    message[1] = sysData.memunit;
+    for ( int i = 0; i < 18; i++ ) {
+        if ( i < localName.length() ) message[i+2] = localName[i];
+        else message[i] = 0x00;
+    }
+    write_ctic( node, wcharIndex, message, 20 );
+
+    message[0] = 0xE2; // Force full screen refresh
+    write_ctic( node, wcharIndex, message, 1 );
+
+    try{
+        while (1) {
+            message[0] = 0xEB; // Send data
+            message[1] = sysData.temperature;
+            message[2] = sysData.localIP[0];
+            message[3] = sysData.localIP[1];
+            message[4] = sysData.localIP[2];
+            message[5] = sysData.localIP[3];
+            message[6] = ( sysData.totalram >> 8) & 0xFF;;
+            message[7] = ( sysData.totalram ) & 0xFF;;
+            message[8] = ( sysData.freeram >> 8 ) & 0xFF;
+            message[9] = ( sysData.freeram ) & 0xFF;
+            message[10] = ( sysData.load[0] >> 8 ) & 0xFF;
+            message[11] = ( sysData.load[0] ) & 0xFF;
+            message[12] = ( sysData.load[1] >> 8 ) & 0xFF;
+            message[13] = ( sysData.load[1] ) & 0xFF;
+            message[14] = ( sysData.load[2] >> 8 ) & 0xFF;
+            message[15] = ( sysData.load[2] ) & 0xFF;
+            message[16] = ( sysData.uptime >> 24 ) & 0xFF;
+            message[17] = ( sysData.uptime >> 16 ) & 0xFF;
+            message[18] = ( sysData.uptime >> 8 ) & 0xFF;
+            message[19] = ( sysData.uptime ) & 0xFF;
+
+            write_ctic( node, wcharIndex, message, 20 );
+            
+            disconnect_node( node );
+            sleep( 60 );
+            sysData.init();
+            connect_node( node, CHANNEL_LE, 0 );
+        }
+    } catch ( const std::exception &e ) {
+        std::cerr << "Exception thrown: " << e.what() << std::endl << "Exiting..." << std::endl;
+    }
 
     close_all; // Close btferret
     return 0;
