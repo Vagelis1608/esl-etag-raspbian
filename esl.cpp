@@ -180,6 +180,10 @@ int main ( int argc, const char *argv[] ) {
 
     __u8 message[20] = {0};
 
+    message[0] = 0xED; // Reset the data on the tag first
+    write_ctic( node, wcharIndex, message, 20 );
+    sleep( 3 );
+
     message[0] = 0xEA; // Set name and memunit
     message[1] = sysData.memunit;
     for ( int i = 0; i < 18; i++ ) {
@@ -187,6 +191,7 @@ int main ( int argc, const char *argv[] ) {
         else message[i] = 0x00;
     }
     write_ctic( node, wcharIndex, message, 20 );
+    sleep( 3 );
 
     message[0] = 0xE2; // Force full screen refresh
     write_ctic( node, wcharIndex, message, 1 );
