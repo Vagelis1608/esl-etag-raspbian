@@ -1,0 +1,3 @@
+[submodule "btferret"]
+	path = btferret
+	url = https://github.com/petzval/btferret.git

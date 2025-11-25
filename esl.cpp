@@ -10,6 +10,10 @@
 #include <stdexcept>
 #include <array>
 
+extern "C" {
+    #include "btferret/btlib.h"
+}
+
 void usage ( const std::string name ) {
     std::cout << "Error! Invalid input." << std::endl << name << " <Local Device Name (18 chars max)> <BLE Tag MAC>" << std::endl;
 }
@@ -105,7 +109,7 @@ struct systemData {
 };
 
 int main ( int argc, const char *argv[] ) {
-    if ( argc != 3 || strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) ) {
+    if ( argc != 3 || strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) == 0 ) {
         usage(argv[0]);
         return 1;
     }
