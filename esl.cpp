@@ -186,7 +186,7 @@ int main ( int argc, const char *argv[] ) {
     message[1] = sysData.memunit;
     for ( int i = 0; i < 18; i++ ) {
         if ( i < localName.length() ) message[i+2] = localName[i];
-        else message[i] = 0x00;
+        else message[i+2] = 0x00;
     }
     write_ctic( node, wcharIndex, message, 20 );
     sleep( 3 );
