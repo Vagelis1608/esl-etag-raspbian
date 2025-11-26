@@ -3,7 +3,6 @@
 #include <string.h>
 #include <vector>
 #include <sstream>
-#include <sys/sysinfo.h>
 #include <fstream>
 #include <memory>
 #include <stdexcept>
@@ -47,10 +46,9 @@ struct systemData {
     uint32_t uptime; // in minutes
 
     void init() { // Also refreshes the data
-        struct sysinfo info;
-        if ( sysinfo( &info ) == 0 ) {
-            long double totalram = info.totalram * 1.0;
-            long double freeram = info.freeram * 1.0;
+        try {
+            long double totalram = std::stoi( runCmd( " free -b | grep -i 'mem' | tr -s ' ' | cut -d' ' -f2 | tr -d '\n'" ) ) * 1.0;
+            long double freeram = std::stoi( runCmd( " free -b | grep -i 'mem' | tr -s ' ' | cut -d' ' -f7 | tr -d '\n'" ) ) * 1.0;
             this->memunit = 0; // Bytes
             if ( totalram >= 1024 ) {
                 this->memunit = 1; // KBs
@@ -69,7 +67,7 @@ struct systemData {
             }
             this->totalram = (int)( totalram * 10 );
             this->freeram = (int)( freeram * 10 );
-        } else {
+        } catch (const std::exception& e) {
             this->totalram = 0;
             this->freeram = 0;
         }
@@ -178,7 +176,7 @@ int main ( int argc, const char *argv[] ) {
         return 5;
     }
 
-    __u8 message[20] = {0};
+    unsigned char message[20] = {0};
 
     message[0] = 0xED; // Reset the data on the tag first
     write_ctic( node, wcharIndex, message, 20 );
