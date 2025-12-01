@@ -70,6 +70,7 @@ struct systemData {
         } catch (const std::exception& e) {
             this->totalram = 0;
             this->freeram = 0;
+            this->memunit = 0;
         }
 
         try {
