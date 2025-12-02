@@ -24,7 +24,7 @@ extern "C" {
 #define WCHAR_PERMIT 0x12 // 18 - wan
 
 void usage ( const std::string name ) {
-    std::cout << "Error! Invalid input." << std::endl << name << " <Local Device Name (18 chars max)> <BLE Tag MAC>" << std::endl;
+    std::cout << "Error! Invalid input." << std::endl << name << " <Local Device Name (36 chars max)> <BLE Tag MAC>" << std::endl;
 }
 
 std::string runCmd(const char* cmd) {
@@ -180,7 +180,7 @@ int main ( int argc, const char *argv[] ) {
     unsigned char message[20] = {0};
 
     message[0] = 0xED; // Reset the data on the tag first
-    write_ctic( node, wcharIndex, message, 20 );
+    write_ctic( node, wcharIndex, message, 1 );
     sleep( 3 );
 
     message[0] = 0xEA; // Set name and memunit
@@ -191,6 +191,16 @@ int main ( int argc, const char *argv[] ) {
     }
     write_ctic( node, wcharIndex, message, 20 );
     sleep( 3 );
+
+    if ( localName.length() > 18 ) {
+        message[1] = 0x42; // Extend name
+        for ( int i = 0; i < 18; i++ ) {
+            if ( i < ( localName.length() - 18 ) ) message[i+2] = localName[i+18];
+            else message[i+2] = 0x00;
+        }
+        write_ctic( node, wcharIndex, message, 20 );
+        sleep( 3 );
+    }
 
     bool firstrun = true;
     try{
