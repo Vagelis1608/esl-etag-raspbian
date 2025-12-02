@@ -20,7 +20,7 @@ And the name once.
 git clone --recurse-submodules https://github.com/Vagelis1608/esl-etag-raspbian.git
 cd esl-etag-raspbian
 make
-sudo ./esl <Local Device Name (18 chars max)> <BLE Tag MAC>
+sudo ./esl <Local Device Name (36 chars max)> <BLE Tag MAC>
 ```
 
 **Must be run as root.**
