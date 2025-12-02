@@ -152,10 +152,9 @@ int main ( int argc, const char *argv[] ) {
     le_scan();
     char *devInfoBuff = new char[1024];
     device_info_ex( BTYPE_LE | BTYPE_DISCONNECTED, devInfoBuff, 1024 );
-    std::string devInfo = devInfoBuff;
-    delete[] devInfoBuff;
     
-    int node = getNodeIndex((std::stringstream)devInfo, tagMAC.c_str());
+    int node = getNodeIndex((std::stringstream)devInfoBuff, tagMAC.c_str());
+    delete[] devInfoBuff;
     if ( node < 0 ) {
         std::cerr << "Failed to find node of device with MAC: " << tagMAC << std::endl;
         close_all;
