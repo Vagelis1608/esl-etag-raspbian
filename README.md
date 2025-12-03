@@ -1,6 +1,6 @@
 # ESL Tag Remote Data Uploader
 
-Pulls system info from the local device to send to an asl tag for display.
+Pulls system info from the local device to send to an esl tag for display.
 
 The tag must be running my custom firmware from: https://github.com/Vagelis1608/stellar-L3N-etag/tree/main
 
