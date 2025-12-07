@@ -153,7 +153,7 @@ int main ( int argc, const char *argv[] ) {
     char *devInfoBuff = new char[1024];
     device_info_ex( BTYPE_LE | BTYPE_DISCONNECTED, devInfoBuff, 1024 );
     
-    int node = getNodeIndex((std::stringstream)devInfoBuff, tagMAC.c_str());
+    signed int node = getNodeIndex((std::stringstream)devInfoBuff, tagMAC.c_str());
     delete[] devInfoBuff;
     if ( node < 0 ) {
         std::cerr << "Failed to find node of device with MAC: " << tagMAC << std::endl;
@@ -169,7 +169,7 @@ int main ( int argc, const char *argv[] ) {
         return 4;
     }
 
-    int wcharIndex = find_ctic_index( node, UUID_2, strtohex( WCHAR_UUID, NULL ) );
+    signed int wcharIndex = find_ctic_index( node, UUID_2, strtohex( WCHAR_UUID, NULL ) );
     if ( wcharIndex < 0 ) {
         std::cerr << "Failed to find characteristic with UUID: " << WCHAR_UUID << std::endl;
         close_all;
