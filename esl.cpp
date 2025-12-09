@@ -17,7 +17,7 @@ extern "C" {
 // Change to use your own.
 #define DEVTXT "./btferret/devices.txt"
 
-// L3N@ Write Characteristic
+// Write Characteristic
 #define TAG_LE_WAIT 750 // in ms, btferret default
 #define WCHAR_UUID "1F1F" //(( 0x1F<<8 ) + 0x1F )
 #define WCHAR_HANDLE 0x001A
@@ -119,7 +119,6 @@ struct systemData {
 };
 
 int getNodeIndex ( std::stringstream allnodes, const char *eslmac ) {
-    int node;
     try {
         std::string buff;
         while( std::getline(allnodes, buff, '\n') ) {
