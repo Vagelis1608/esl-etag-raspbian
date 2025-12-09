@@ -41,3 +41,13 @@
 *.dwo
 
 .vscode
+data.json
+
+# cmake
+_deps
+build
+CMakeFiles
+CMakeCache.txt
+cmake_*
+CPack*
+libpsl*
