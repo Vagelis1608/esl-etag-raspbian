@@ -177,6 +177,11 @@ int main ( int argc, const char *argv[] ) {
 
     unsigned char message[20] = {0};
 
+    message[0] = 0xE1; // Set Scene
+    message[1] = 0x03; // Remote Data
+    write_ctic( node, wcharIndex, message, 2 );
+    sleep( 3 );
+
     message[0] = 0xED; // Reset the data on the tag first
     write_ctic( node, wcharIndex, message, 1 );
     sleep( 3 );
