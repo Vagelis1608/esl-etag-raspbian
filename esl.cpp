@@ -15,7 +15,7 @@ extern "C" {
 
 // Use btferret's devices.txt 
 // Change to use your own.
-#define DEVTXT "btferret/devices.txt"
+#define DEVTXT "./btferret/devices.txt"
 
 // L3N@ Write Characteristic
 #define TAG_LE_WAIT 750 // in ms, btferret default
@@ -128,7 +128,7 @@ int getNodeIndex ( std::stringstream allnodes, const char *eslmac ) {
             }
         }
     }  catch (const std::exception& e) {
-        throw e;
+        std::cerr << "Exception thrown while getting the Node Index: " << e.what() << std::endl;
     }
     return -1;
 }
@@ -210,8 +210,8 @@ int main ( int argc, const char *argv[] ) {
             message[3] = sysData.localIP[1];
             message[4] = sysData.localIP[2];
             message[5] = sysData.localIP[3];
-            message[6] = ( sysData.totalram >> 8) & 0xFF;;
-            message[7] = ( sysData.totalram ) & 0xFF;;
+            message[6] = ( sysData.totalram >> 8) & 0xFF;
+            message[7] = ( sysData.totalram ) & 0xFF;
             message[8] = ( sysData.freeram >> 8 ) & 0xFF;
             message[9] = ( sysData.freeram ) & 0xFF;
             message[10] = ( sysData.load[0] >> 8 ) & 0xFF;
