@@ -14,10 +14,14 @@ FetchContent_Declare(cpr GIT_REPOSITORY https://github.com/libcpr/cpr.git
 FetchContent_MakeAvailable(cpr)
 
 add_executable(pc pc.cpp)
-target_link_libraries(pc nlohmann_json::nlohmann_json)
-target_link_libraries(pc cpr::cpr)
-target_link_libraries(pc btlib)
+set_property(TARGET pc PROPERTY CXX_STANDARD 20)
+set_property(TARGET pc PROPERTY CXX_STANDARD_REQUIRED ON)
+target_link_libraries(pc PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(pc PRIVATE cpr::cpr)
+target_link_libraries(pc PRIVATE btlib)
 
 project(eslProject)
 add_executable(esl esl.cpp)
-target_link_libraries(esl btlib)
+set_property(TARGET esl PROPERTY CXX_STANDARD 20)
+set_property(TARGET esl PROPERTY CXX_STANDARD_REQUIRED ON)
+target_link_libraries(esl PRIVATE btlib)
