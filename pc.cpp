@@ -8,6 +8,9 @@
 #include <stdexcept>
 #include <array>
 #include <unistd.h>
+#include <ctime>
+
+#include <cpr/cpr.h>
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -47,81 +50,158 @@ std::string runCmd(const char* cmd) {
 }
 
 struct systemData {
-    uint8_t temperature, memunit, localIP[4];
-    uint16_t totalram, freeram, load[3];
-    uint32_t uptime; // in minutes
+    private:
+        signed int cpuI = -1, gpuI = -1, ramI = -1;
 
-    void init() { // Also refreshes the data
-        try {
-            long double totalram = std::stoi( runCmd( " free -b | grep -i 'mem' | tr -s ' ' | cut -d' ' -f2 | tr -d '\n'" ) ) * 1.0;
-            long double freeram = std::stoi( runCmd( " free -b | grep -i 'mem' | tr -s ' ' | cut -d' ' -f7 | tr -d '\n'" ) ) * 1.0;
-            this->memunit = 0; // Bytes
-            if ( totalram >= 1024 ) {
-                this->memunit = 1; // KBs
-                totalram /= 1024;
-                freeram /= 1024;
-            }
-            if ( totalram >= 1024 ) {
-                this->memunit = 2; // MBs
-                totalram /= 1024;
-                freeram /= 1024;
-            }
-            if ( totalram >= 1024 ) {
-                this->memunit = 3; // GBs
-                totalram /= 1024;
-                freeram /= 1024;
-            }
-            this->totalram = (int)( totalram * 10 );
-            this->freeram = (int)( freeram * 10 );
-        } catch (const std::exception& e) {
-            this->totalram = 0;
-            this->freeram = 0;
-            this->memunit = 0;
+        void init(json baseJson) {
+            try {
+                int i = 0;
+                do {
+                    std::string nodeId = baseJson[i]["NodeId"];
+
+                    if ( nodeId.find( "cpu" ) != std::string::npos ) this->cpuI = i;
+                    else if ( nodeId.find( "gpu" ) != std::string::npos ) this->gpuI = i;
+                    else if ( nodeId.find( "ram" ) != std::string::npos ) this->cpuI = i;
+
+                    i++;
+                } while ( ( this->cpuI < 0 || this->gpuI < 0 || this->ramI < 0 ) && i < baseJson.size() );
+            } catch ( std::exception &e ) {};
         }
+            
+    public:
+        uint8_t cpuTemp, gpuTemp;
+        uint16_t cpuPower, gpuPower, cpuLoad, ramLoad, gpuLoad, gpuRamLoad;
+        uint32_t uptime; // in minutes
+        unsigned long startup; // EPOCH
 
-        try {
-            std::string load;
-            int i = 0;
-            std::stringstream loads = (std::stringstream)runCmd( "uptime | awk -F ':' '{ print $NF }' | sed 's!^ !!' | tr -d ' \n'" );
-            while( std::getline(loads, load, ',') && i < 3 ) {
-                this->load[i] = std::stod(load) * 10;
-                i++;
-            }
-        } catch (const std::exception& e) {
-            this->load[0] = 0;
-            this->load[1] = 0;
-            this->load[2] = 0;
+        void reset () {
+            this->cpuTemp = 0;
+            this->cpuLoad = 0;
+            this->cpuPower = 0;
+            this->ramLoad = 0;
+            this->gpuTemp = 0;
+            this->gpuLoad = 0;
+            this->gpuPower = 0;
+            this->gpuRamLoad = 0;
         }
 
-        try {
-            this->uptime = std::stoi( runCmd( "cat /proc/uptime | cut -d. -f1 | tr -d '\n'" ) ) / 60;
-        } catch (const std::exception& e) {
-            this->uptime = 0;
-        }
+        void refresh (const std::string *recData) {
+            this->reset();
 
-        // Get temperature and round it
-        try {
-            std::string reportedTemp = runCmd( "cat /sys/class/thermal/thermal_zone0/temp" );
-            this->temperature = std::stoi(reportedTemp) / 1000;
-        } catch (const std::exception& e) {
-            this->temperature = 0;
-        }
-        
-        try {
-            std::string ipbit;
-            std::stringstream localIP = (std::stringstream)runCmd( "hostname -I | cut -d' ' -f1 | tr -d ' \n'" );
-            int i = 0;
-            while( std::getline(localIP, ipbit, '.') && i < 4 ) {
-                this->localIP[i] = std::stoi(ipbit);
-                i++;
+            uptime = ( this->startup > 0 ) ? ( ( ( std::time(0) - this->startup ) / 60 ) + 1 ) : 0;
+
+            json recJson = json::parse(*recData),
+                baseJson = recJson["Children"][0]["Children"];
+
+            if ( this->cpuI < 0 || this->gpuI < 0 || this->ramI < 0 ) this->init(baseJson);
+
+            if ( this->cpuI >= 0 ) {
+                json cpuJson = baseJson[this->cpuI];
+                
+                for ( int i = 0; i < cpuJson.size(); i++ ) {
+                    std::string test = cpuJson[i]["NodeId"];
+
+                    if ( test.find( "Temperature" ) != std::string::npos ){
+                        for ( int j = 0; j < cpuJson[i]["Children"].size(); j++ ) {
+                            json temp = cpuJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "temperature/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                this->cpuTemp = std::stoi( found.substr( 0, found.find_first_of( ',' ) ) );
+                                break;
+                            }
+                        }
+                    } else if ( test.find( "Load" ) != std::string::npos ){
+                        for ( int j = 0; j < cpuJson[i]["Children"].size(); j++ ) {
+                            json temp = cpuJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "load/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                found.erase( found.find_first_of( ',' ) );
+                                this->cpuLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                                break;
+                            }
+                        }
+                    } else if ( test.find( "Power" ) != std::string::npos ){
+                        for ( int j = 0; j < cpuJson[i]["Children"].size(); j++ ) {
+                            json temp = cpuJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "power/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                found.erase( found.find_first_of( ',' ) );
+                                this->cpuPower = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                                break;
+                            }
+                        }
+                    }
+                }
             }
-        } catch (const std::exception& e) {
-            this->localIP[0] = 0;
-            this->localIP[1] = 0;
-            this->localIP[2] = 0;
-            this->localIP[3] = 0;
-        }
-    }
+
+            if ( this->ramI >= 0 ) {
+                json ramJson = baseJson[this->ramI];
+
+                for ( int i = 0; i < ramJson.size(); i++ ) {
+                    if ( ((std::string)(ramJson["NodeId"])).find( "Load" ) != std::string::npos ) {
+                        for ( int j = 0; j < ramJson[i]["Children"].size(); j++ ) {
+                            json temp = ramJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "load/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                found.erase( found.find_first_of( ',' ) );
+                                this->cpuLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if ( this->gpuI >= 0 ) {
+                json gpuJson = baseJson[this->gpuI];
+                
+                for ( int i = 0; i < gpuJson.size(); i++ ) {
+                    std::string test = gpuJson[i]["NodeId"];
+
+                    if ( test.find( "Temperature" ) != std::string::npos ){
+                        for ( int j = 0; j < gpuJson[i]["Children"].size(); j++ ) {
+                            json temp = gpuJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "temperature/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                this->gpuTemp = std::stoi( found.substr( 0, found.find_first_of( ',' ) ) );
+                                break;
+                            }
+                        }
+                    } else if ( test.find( "Load" ) != std::string::npos ){
+                        for ( int j = 0; j < gpuJson[i]["Children"].size(); j++ ) {
+                            json temp = gpuJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "load/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                found.erase( found.find_first_of( ',' ) );
+                                this->gpuLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                            } else if ( strcmp( ((std::string)(temp["Text"])).c_str(), "GPU Memory" ) == 0 ) {
+                                std::string found = temp["Value"];
+                                found.erase( found.find_first_of( ',' ) );
+                                this->gpuRamLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                            }
+                        }
+                    } else if ( test.find( "Power" ) != std::string::npos ){
+                        for ( int j = 0; j < gpuJson[i]["Children"].size(); j++ ) {
+                            json temp = gpuJson[i]["Children"][j];
+
+                            if ( ((std::string)(temp["NodeId"])).find( "power/0" ) != std::string::npos ) {
+                                std::string found = temp["Value"];
+                                found.erase( found.find_first_of( ',' ) );
+                                this->gpuPower = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+       }
 };
 
 int getNodeIndex ( std::stringstream allnodes, const char *eslmac ) {
@@ -138,16 +218,36 @@ int getNodeIndex ( std::stringstream allnodes, const char *eslmac ) {
     return -1;
 }
 
+void setName ( std::string pcName, int node, int wcharIndex ) {
+    unsigned char message[20] = {0};
+
+    message[0] = 0xEA; // Set name
+    message[1] = 0x00;
+    for ( int i = 0; i < 18; i++ ) {
+        if ( i < pcName.length() ) message[i+2] = pcName[i];
+        else message[i+2] = 0x00;
+    }
+    write_ctic( node, wcharIndex, message, 20 );
+    sleep( 3 );
+
+    if ( pcName.length() > 18 ) {
+        message[1] = 0x42; // Extend name
+        for ( int i = 0; i < 18; i++ ) {
+            if ( i < ( pcName.length() - 18 ) ) message[i+2] = pcName[i+18];
+            else message[i+2] = 0x00;
+        }
+        write_ctic( node, wcharIndex, message, 20 );
+        sleep( 3 );
+    }
+}
+
 int main ( int argc, const char *argv[] ) {
     if ( argc != 4 || strcmp( argv[1], "-h" ) == 0 || strcmp( argv[1], "--help" ) == 0 ) {
         usage(argv[0]);
         return 1;
     }
 
-    const std::string apiPoint = ( *argv[1] + DATAJ ), localName = argv[2], tagMAC = argv[3];
-
-    systemData sysData;
-    sysData.init();
+    const std::string apiPoint = ( *argv[1] + DATAJ ), pcName = argv[2], tagMAC = argv[3];
 
     if( init_blue(DEVTXT) == 0 ) {
         std::cerr << "btferret failed to init." << std::endl;
@@ -183,65 +283,82 @@ int main ( int argc, const char *argv[] ) {
 
     unsigned char message[20] = {0};
 
+    message[0] = 0xE0; // Set Model
+    message[1] = 0x06; // Only 296x156 models supported
+    write_ctic( node, wcharIndex, message, 2 );
+    sleep( 3 );
+
+    message[0] = 0xE1; // Set Scene
+    message[1] = 0x04; // PC Data
+    write_ctic( node, wcharIndex, message, 2 );
+    sleep( 3 );
+
     message[0] = 0xED; // Reset the data on the tag first
     write_ctic( node, wcharIndex, message, 1 );
     sleep( 3 );
 
-    message[0] = 0xEA; // Set name and memunit
-    message[1] = sysData.memunit;
-    for ( int i = 0; i < 18; i++ ) {
-        if ( i < localName.length() ) message[i+2] = localName[i];
-        else message[i+2] = 0x00;
-    }
-    write_ctic( node, wcharIndex, message, 20 );
-    sleep( 3 );
+    setName( pcName, node, wcharIndex );
 
-    if ( localName.length() > 18 ) {
-        message[1] = 0x42; // Extend name
-        for ( int i = 0; i < 18; i++ ) {
-            if ( i < ( localName.length() - 18 ) ) message[i+2] = localName[i+18];
-            else message[i+2] = 0x00;
-        }
-        write_ctic( node, wcharIndex, message, 20 );
-        sleep( 3 );
-    }
-
-    bool firstrun = true;
     try{
+        bool mode = true; // true: reset data on connection
+        cpr::Response req;
+        uint8_t attempts = 0;
+        systemData sysData;
+        sysData.startup = 0;
+
         while (1) {
-            message[0] = 0xEB; // Send data
-            message[1] = sysData.temperature;
-            message[2] = sysData.localIP[0];
-            message[3] = sysData.localIP[1];
-            message[4] = sysData.localIP[2];
-            message[5] = sysData.localIP[3];
-            message[6] = ( sysData.totalram >> 8) & 0xFF;
-            message[7] = ( sysData.totalram ) & 0xFF;
-            message[8] = ( sysData.freeram >> 8 ) & 0xFF;
-            message[9] = ( sysData.freeram ) & 0xFF;
-            message[10] = ( sysData.load[0] >> 8 ) & 0xFF;
-            message[11] = ( sysData.load[0] ) & 0xFF;
-            message[12] = ( sysData.load[1] >> 8 ) & 0xFF;
-            message[13] = ( sysData.load[1] ) & 0xFF;
-            message[14] = ( sysData.load[2] >> 8 ) & 0xFF;
-            message[15] = ( sysData.load[2] ) & 0xFF;
-            message[16] = ( sysData.uptime >> 24 ) & 0xFF;
-            message[17] = ( sysData.uptime >> 16 ) & 0xFF;
-            message[18] = ( sysData.uptime >> 8 ) & 0xFF;
-            message[19] = ( sysData.uptime ) & 0xFF;
+            req = cpr::Get(cpr::Url{ apiPoint }, cpr::Timeout{60000}, cpr::ReserveSize{ 1024 * 1024 });
 
-            write_ctic( node, wcharIndex, message, 20 );
+            if ( req.status_code != 200 ) {
+                if ( attempts == 6 ) {
+                    mode = true;
+                    sysData.startup = 0;
 
-            if ( firstrun ) {
-                message[0] = 0xE2; // Force full screen refresh
-                write_ctic( node, wcharIndex, message, 1 );
+                    message[0] = 0xED; // Reset the data on the tag
+                    write_ctic( node, wcharIndex, message, 1 );
+                    sleep( 3 );
+                }
+                if ( attempts <= 6 ) attempts++;
+            } else {
+                if ( sysData.startup == 0 ) sysData.startup = std::time(0);
+                sysData.refresh(&req.text);
+
+                message[0] = 0xEB; // Send data
+                message[1] = sysData.cpuTemp;
+                message[2] = sysData.gpuTemp;
+                message[3] = 0x00;
+                message[4] = ( sysData.ramLoad >> 8 ) & 0xFF;
+                message[5] = ( sysData.ramLoad ) & 0xFF;
+                message[6] = ( sysData.cpuPower >> 8) & 0xFF;
+                message[7] = ( sysData.cpuPower ) & 0xFF;
+                message[8] = ( sysData.gpuPower >> 8 ) & 0xFF;
+                message[9] = ( sysData.gpuPower ) & 0xFF;
+                message[10] = ( sysData.cpuLoad >> 8 ) & 0xFF;
+                message[11] = ( sysData.cpuLoad ) & 0xFF;
+                message[12] = ( sysData.gpuLoad >> 8 ) & 0xFF;
+                message[13] = ( sysData.gpuLoad ) & 0xFF;
+                message[14] = ( sysData.gpuRamLoad >> 8 ) & 0xFF;
+                message[15] = ( sysData.gpuRamLoad ) & 0xFF;
+                message[16] = ( sysData.uptime >> 24 ) & 0xFF;
+                message[17] = ( sysData.uptime >> 16 ) & 0xFF;
+                message[18] = ( sysData.uptime >> 8 ) & 0xFF;
+                message[19] = ( sysData.uptime ) & 0xFF;
+
+                write_ctic( node, wcharIndex, message, 20 );
                 sleep( 3 );
-                firstrun = false;
+
+                if ( mode ) {
+                    setName( pcName, node, wcharIndex );
+
+                    message[0] = 0xE2; // Force full screen refresh
+                    write_ctic( node, wcharIndex, message, 1 );
+                    sleep( 3 );
+                    mode = false;
+                }
             }
-            
+
             disconnect_node( node );
-            sleep( 60 );
-            sysData.init();
+            sleep( ( req.elapsed < 60 ) ? ( 60 - req.elapsed ) : 1 );
             connect_node( node, CHANNEL_LE, 0 );
         }
     } catch ( const std::exception &e ) {
