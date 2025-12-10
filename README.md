@@ -30,7 +30,7 @@ sudo ./esl <Local Device Name (36 chars max)> <BLE Tag MAC>
 ```
 
 
-To display data from a PC, you need to have OpenHardWare monitor running on it, with the Web Server and Allow Remote Access enabled.
+To display data from a PC, you need to have [OpenHardwareMonitor](https://github.com/hexagon-oss/openhardwaremonitor) running on it, with the Web Server and Allow Remote Access enabled.
 
 You will probably have to allow the port two-way access in your Firewall, including the Windows one.
 
