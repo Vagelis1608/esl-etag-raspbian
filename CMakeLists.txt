@@ -4,9 +4,6 @@ project(uploaderProject)
 
 include(FetchContent)
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
-FetchContent_MakeAvailable(json)
-
 FetchContent_Declare(Boost URL https://github.com/boostorg/boost/releases/download/boost-1.90.0/boost-1.90.0-cmake.tar.gz)
 FetchContent_MakeAvailable(Boost)
 
