@@ -105,8 +105,7 @@ struct systemData {
 
         // Get temperature and round it
         try {
-            std::string reportedTemp = runCmd( "cat /sys/class/thermal/thermal_zone0/temp" );
-            this->temperature = std::stoi(reportedTemp) / 1000;
+            this->temperature = std::stoi( runCmd( "cat /sys/class/thermal/thermal_zone0/temp" ) ) / 1000;
         } catch (const std::exception& e) {
             this->temperature = 0;
         }
