@@ -20,26 +20,30 @@ And the name once.
 git clone --recurse-submodules https://github.com/Vagelis1608/esl-etag-raspbian.git
 cd esl-etag-raspbian
 cmake . # v3.14 minimum
-make # optional, to build both together
+make -j$( nproc )
 ```
+```
+# Usage:
+$ ./uploader -h
+Options:
+  -h [ --help ]         Print this help message and exit
+  --local-name arg      Name to send to the tag for local device
+  --local-mac arg       ESL Tag's MAC Address for local device
+  --pc-name arg         Name to send to the tag for PC
+  --pc-mac arg          ESL Tag's MAC Address for PC
+  --pc-ip arg           ip:port of PC
 
-```
-# Raspbian data only
-make esl
-sudo ./esl <Local Device Name (36 chars max)> <BLE Tag MAC>
-```
+Only the first 36 chars of the names will be send.
+Both local-name and local-mac must be set, or the local mode gets disabled.
+All 3 pc-* must be set, or remote mode gets disabled.
 
+At least one mode must be enabled, or the program errors out.
+```
 
 To display data from a PC, you need to have [OpenHardwareMonitor](https://github.com/hexagon-oss/openhardwaremonitor) running on it, with the Web Server and Allow Remote Access enabled.
 
 You will probably have to allow the port two-way access in your Firewall, including the Windows one.
 
 **This still needs to run on a Raspberry Pi, as the communication protocols arent supported in Windows**
-
-```
-# PC data only
-make pc
-sudo ./pc <PC ip:port> <Device Name (36 chars max)> <BLE Tag MAC>
-```
 
 **Must be run as root.**
