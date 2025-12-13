@@ -231,7 +231,7 @@ struct remoteData {
             if ( this->cpuI < 0 || this->gpuI < 0 || this->ramI < 0 ) this->init(baseJson);
 
             if ( this->cpuI >= 0 ) {
-                json::array cpuJson = baseJson.at(this->cpuI).as_array();
+                json::array cpuJson = baseJson.at(this->cpuI).at("Children").as_array();
                 
                 for ( int i = 0; i < cpuJson.size(); i++ ) {
                     json::string test = cpuJson.at(i).at("NodeId").as_string();
@@ -273,7 +273,7 @@ struct remoteData {
             }
 
             if ( this->ramI >= 0 ) {
-                json::value ramJson = baseJson.at(this->ramI);
+                json::value ramJson = baseJson.at(this->ramI).at("Children");
 
                 for ( int i = 0; i < ramJson.as_array().size(); i++ ) {
                     if ( ((json::string)(ramJson.at("NodeId").as_string())).find( "Load" ) != std::string::npos ) {
@@ -293,7 +293,7 @@ struct remoteData {
             }
 
             if ( this->gpuI >= 0 ) {
-                json::value gpuJson = baseJson.at(this->gpuI);
+                json::value gpuJson = baseJson.at(this->gpuI).at("Children");
                 
                 for ( int i = 0; i < gpuJson.as_array().size(); i++ ) {
                     json::string test = gpuJson.at(i).at("NodeId").as_string();
@@ -451,7 +451,10 @@ signed int getNodeIndex ( std::stringstream allnodes, const char *eslmac ) {
 
 void usage ( po::options_description *desc ) {
     std::cout << *desc << "\n" 
-              << "Only the first 36 chars of the names will be send.\n";
+              << "Only the first 36 chars of the names will be send.\n"
+              << "Both local-name and local-mac must be set, or the local mode gets disabled.\n"
+              << "All 3 pc-* must be set, or remote mode gets disabled.\n\n"
+              << "At least one mode must be enabled, or the program errors out.\n";
 }
 
 int main ( const int argc, const char *argv[] ) {
