@@ -164,7 +164,7 @@ struct systemData {
         unsigned char message[20] = {0};
     
         message[0] = 0xEA; // Set name
-        message[1] = 0x00;
+        message[1] = this->memunit;
         for ( int i = 0; i < 18; i++ ) {
             if ( i < this->name.length() ) message[i+2] = this->name[i];
             else message[i+2] = 0x00;
