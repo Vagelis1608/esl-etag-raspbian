@@ -525,6 +525,7 @@ int main ( const int argc, const char *argv[] ) {
         }
         
         sysData.prep();
+        sysData.refresh();
         sysData.setName();
     }
     
@@ -567,6 +568,8 @@ int main ( const int argc, const char *argv[] ) {
         std::string apiPoint = (vm["pc-ip"].as<std::string>()) + DATAJ;
 
         while (true) {
+            loopTimer = std::time(0);
+
             if ( doLocal ) {
                 sysData.refresh();
                 sysData.send();
@@ -587,7 +590,7 @@ int main ( const int argc, const char *argv[] ) {
                         write_ctic( remData.node, remData.wcharIndex, message, 1 );
                         sleep( 3 );
 
-                        disconnect_node( sysData.node );
+                        disconnect_node( remData.node );
                     }
                     if ( attempts <= 6 ) attempts++;
                 } else {
@@ -597,7 +600,7 @@ int main ( const int argc, const char *argv[] ) {
                     remData.refresh(&req.text);
                     remData.send();
 
-                    disconnect_node( sysData.node );
+                    disconnect_node( remData.node );
                 }
             }
 
