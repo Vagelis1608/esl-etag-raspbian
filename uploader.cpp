@@ -208,6 +208,29 @@ struct remoteData {
         std::string name;
         signed int node, wcharIndex;
         bool mode = true;
+        
+#ifndef JSONDEBUG
+        void print () {
+            std::cout << "cpuTemp:  " << (int)this->cpuTemp << '\n'
+                      << "gpuTemp:  " << (int)this->gpuTemp << '\n'
+                      << "cpuPower: " << this->cpuPower << '\n'
+                      << "gpuPower: " << this->gpuPower << '\n'
+                      << "cpuLoad:  " << this->cpuLoad << '\n'
+                      << "ramLoad:  " << this->ramLoad << '\n'
+                      << "gpuLoad:  " << this->gpuLoad << '\n'
+                      << "gpuRLoad: " << this->gpuRamLoad << '\n'
+                      << "uptime:   " << this->uptime << '\n'
+                      << "startup:  " << this->startup << '\n'
+                      << "name:     " << this->name << '\n'
+                      << "node:     " << this->node << '\n'
+                      << "wcharI:   " << this->wcharIndex << '\n'
+                      << "mode:     " << this->mode << '\n'
+                      << "cpuI:     " << this->cpuI << '\n'
+                      << "gpuI:     " << this->gpuI << '\n'
+                      << "ramI:     " << this->ramI << std::endl;
+
+        }
+#endif // JSONDEBUG
 
         void reset () {
             this->cpuTemp = 0;
@@ -605,6 +628,11 @@ int main ( const int argc, const char *argv[] ) {
 
             sleep( ( std::time(0) - loopTimer < 60 ) ? ( std::time(0) - loopTimer ) : 1 );
             if ( doLocal ) connect_node( sysData.node, CHANNEL_LE, 0 );
+
+#ifdef JSONDEBUG
+            remData.print();
+            throw std::runtime_error( "JSON Debug Breakout." );
+#endif
         }
     } catch ( std::exception &e ) {
         std::cerr << "Exception thrown: " << e.what() << '\n' << "Exiting..." << std::endl;
