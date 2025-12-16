@@ -204,12 +204,12 @@ struct remoteData {
         uint8_t cpuTemp, gpuTemp;
         uint16_t cpuPower, gpuPower, cpuLoad, ramLoad, gpuLoad, gpuRamLoad;
         uint32_t uptime; // in minutes
-        unsigned long startup; // EPOCH
+        std::time_t startup;
         std::string name;
         signed int node, wcharIndex;
         bool mode = true;
         
-#ifndef JSONDEBUG
+#ifdef JSONDEBUG
         void print () {
             std::cout << "cpuTemp:  " << (int)this->cpuTemp << '\n'
                       << "gpuTemp:  " << (int)this->gpuTemp << '\n'
@@ -228,7 +228,6 @@ struct remoteData {
                       << "cpuI:     " << this->cpuI << '\n'
                       << "gpuI:     " << this->gpuI << '\n'
                       << "ramI:     " << this->ramI << std::endl;
-
         }
 #endif // JSONDEBUG
 
@@ -246,7 +245,8 @@ struct remoteData {
         void refresh (const std::string *recData) {
             this->reset();
 
-            this->uptime = ( this->startup > 0 ) ? ( ( ( std::time(0) - this->startup ) / 60 ) + 1 ) : 0;
+            if ( this->startup <= 0 ) this->startup = std::time(0);
+            this->uptime = ( difftime( std::time(0), this->startup ) / 60 ) + 1;
 
             json::value baseJson = json::parse(*recData).at("Children").at(0).at("Children");
 
@@ -274,7 +274,7 @@ struct remoteData {
 
                             if ( ((json::string)(temp.at("NodeId").as_string())).find( "load/0" ) != std::string::npos ) {
                                 std::string found = (std::string)temp.at("Value").as_string();
-                                found.erase( found.find_first_of( ',' ) );
+                                found.erase( found.find_first_of( ',' ), 1 );
                                 this->cpuLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
                                 break;
                             }
@@ -285,7 +285,7 @@ struct remoteData {
 
                             if ( ((json::string)(temp.at("NodeId").as_string())).find( "power/0" ) != std::string::npos ) {
                                 std::string found = (std::string)temp.at("Value").as_string();
-                                found.erase( found.find_first_of( ',' ) );
+                                found.erase( found.find_first_of( ',' ), 1 );
                                 this->cpuPower = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
                                 break;
                             }
@@ -298,14 +298,14 @@ struct remoteData {
                 json::value ramJson = baseJson.at(this->ramI).at("Children");
 
                 for ( int i = 0; i < ramJson.as_array().size(); i++ ) {
-                    if ( ((json::string)(ramJson.at("NodeId").as_string())).find( "Load" ) != std::string::npos ) {
+                    if ( ramJson.at(i).at("NodeId").as_string().find( "Load" ) != std::string::npos ) {
                         for ( int j = 0; j < ramJson.at(i).at("Children").as_array().size(); j++ ) {
                             json::value temp = ramJson.at(i).at("Children").at(j);
 
-                            if ( ((std::string)(temp.at("NodeId").as_string())).find( "load/0" ) != std::string::npos ) {
+                            if ( temp.at("NodeId").as_string().find( "load/0" ) != std::string::npos ) {
                                 std::string found = (std::string)temp.at("Value").as_string();
-                                found.erase( found.find_first_of( ',' ) );
-                                this->cpuLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
+                                found.erase( found.find_first_of( ',' ), 1 );
+                                this->ramLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
                                 break;
                             }
                         }
@@ -336,11 +336,11 @@ struct remoteData {
 
                             if ( ((std::string)(temp.at("NodeId").as_string())).find( "load/0" ) != std::string::npos ) {
                                 std::string found = (std::string)temp.at("Value").as_string();
-                                found.erase( found.find_first_of( ',' ) );
+                                found.erase( found.find_first_of( ',' ), 1 );
                                 this->gpuLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
                             } else if ( strcmp( ((std::string)(temp.at("Text").as_string())).c_str(), "GPU Memory" ) == 0 ) {
                                 std::string found = (std::string)temp.at("Value").as_string();
-                                found.erase( found.find_first_of( ',' ) );
+                                found.erase( found.find_first_of( ',' ), 1 );
                                 this->gpuRamLoad = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
                             }
                         }
@@ -350,7 +350,7 @@ struct remoteData {
 
                             if ( ((std::string)(temp.at("NodeId").as_string())).find( "power/0" ) != std::string::npos ) {
                                 std::string found = (std::string)temp.at("Value").as_string();
-                                found.erase( found.find_first_of( ',' ) );
+                                found.erase( found.find_first_of( ',' ), 1 );
                                 this->gpuPower = std::stoi( found.substr( 0, found.find_first_of( ' ' ) ) );
                                 break;
                             }
@@ -443,13 +443,14 @@ struct remoteData {
 
         void init(json::value baseJson) {
             try {
+                this->startup = 0;
                 int i = 0;
                 do {
                     json::string nodeId = baseJson.at(i).at("NodeId").as_string();
 
-                    if ( nodeId.find( "cpu" ) != std::string::npos ) this->cpuI = i;
-                    else if ( nodeId.find( "gpu" ) != std::string::npos ) this->gpuI = i;
-                    else if ( nodeId.find( "ram" ) != std::string::npos ) this->cpuI = i;
+                    if ( nodeId.find( "cpu" ) != json::string::npos ) this->cpuI = i;
+                    else if ( nodeId.find( "gpu" ) != json::string::npos ) this->gpuI = i;
+                    else if ( nodeId.find( "ram" ) != json::string::npos ) this->ramI = i;
 
                     i++;
                 } while ( ( this->cpuI < 0 || this->gpuI < 0 || this->ramI < 0 ) && i < baseJson.as_array().size() );
@@ -549,7 +550,8 @@ int main ( const int argc, const char *argv[] ) {
         sysData.prep();
         sysData.refresh();
         sysData.setName();
-    }
+    } else
+        std::cout << "Local Mode disabled." << '\n';
     
     if ( doPC ) {
         remData.name = vm["pc-name"].as<std::string>();
@@ -578,16 +580,17 @@ int main ( const int argc, const char *argv[] ) {
         remData.prep();
         remData.setName();
         disconnect_node( remData.node );
-    }
+    } else
+        std::cout << "Remote/PC Mode disabled." << '\n';
 
     delete[] devInfoBuff;
 
     try {
-        unsigned long loopTimer = std::time(0);
+        std::time_t loopTimer;
         cpr::Response req;
         uint8_t attempts = 0;
         unsigned char message[20];
-        std::string apiPoint = (vm["pc-ip"].as<std::string>()) + DATAJ;
+        const std::string apiPoint = (vm["pc-ip"].as<std::string>()) + DATAJ;
 
         while (true) {
             loopTimer = std::time(0);
@@ -626,10 +629,10 @@ int main ( const int argc, const char *argv[] ) {
                 }
             }
 
-            sleep( ( std::time(0) - loopTimer < 60 ) ? ( std::time(0) - loopTimer ) : 1 );
+#ifndef JSONDEBUG
+            sleep( ( difftime( std::time(0), loopTimer ) < 60 ) ? ( 60 - difftime( std::time(0), loopTimer ) ) : 1 );
             if ( doLocal ) connect_node( sysData.node, CHANNEL_LE, 0 );
-
-#ifdef JSONDEBUG
+#else
             remData.print();
             throw std::runtime_error( "JSON Debug Breakout." );
 #endif
