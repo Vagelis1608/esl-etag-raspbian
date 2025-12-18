@@ -22,8 +22,7 @@ extern "C" {
     #include "btferret/btlib.h"
 }
 
-// Use btferret's devices.txt 
-// Change to use your own.
+// Use btferret's devices.txt as default
 #define DEVTXT "./btferret/devices.txt"
 
 // Open Hardware Monitor API Point 
@@ -484,6 +483,7 @@ int main ( const int argc, const char *argv[] ) {
     po::options_description desc("Options");
     desc.add_options()
         ( "help,h", "Print this help message and exit" )
+        ( "devices-txt", po::value<std::string>(), "devices.txt to use for btferret. Defaults to btferret/devices.txt" )
         ( "local-name", po::value<std::string>(), "Name to send to the tag for local device" )
         ( "local-mac", po::value<std::string>(), "ESL Tag's MAC Address for local device" )
         ( "pc-name", po::value<std::string>(), "Name to send to the tag for PC" )
@@ -494,6 +494,10 @@ int main ( const int argc, const char *argv[] ) {
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
+
+    char* dtxt  = new char[1024];
+    if ( vm.count("devices-txt") ) strncpy( dtxt, vm["devices-txt"].as<std::string>().c_str(), 1024 );
+    else dtxt = DEVTXT;
 
     bool doLocal = ( vm.count("local-name") && vm.count("local-mac") ),
          doPC = ( vm.count("pc-name") && vm.count("pc-mac") && vm.count("pc-ip") );
@@ -509,10 +513,12 @@ int main ( const int argc, const char *argv[] ) {
         return 1;
     }
     
-    if( init_blue(DEVTXT) == 0 ) { // Init btferret
+    if( init_blue(dtxt) == 0 ) { // Init btferret
         std::cerr << "btferret failed to init." << std::endl;
         return 2; 
     }
+
+    delete[] dtxt;
 
     systemData sysData; // Local Data
     remoteData remData; // Remote/PC Data
