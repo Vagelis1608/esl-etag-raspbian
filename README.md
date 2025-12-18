@@ -27,6 +27,7 @@ make -j$( nproc )
 $ ./uploader -h
 Options:
   -h [ --help ]         Print this help message and exit
+  --devices-txt arg     devices.txt to use for btferret. Defaults to btferret/devices.txt
   --local-name arg      Name to send to the tag for local device
   --local-mac arg       ESL Tag's MAC Address for local device
   --pc-name arg         Name to send to the tag for PC
