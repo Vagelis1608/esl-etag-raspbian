@@ -626,6 +626,8 @@ int main ( const int argc, const char *argv[] ) {
                     remData.send();
 
                     disconnect_node( remData.node );
+
+                    attempts = 0;
                 }
             }
 
