@@ -495,10 +495,6 @@ int main ( const int argc, const char *argv[] ) {
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    char* dtxt  = new char[1024];
-    if ( vm.count("devices-txt") ) strncpy( dtxt, vm["devices-txt"].as<std::string>().c_str(), 1024 );
-    else dtxt = DEVTXT;
-
     bool doLocal = ( vm.count("local-name") && vm.count("local-mac") ),
          doPC = ( vm.count("pc-name") && vm.count("pc-mac") && vm.count("pc-ip") );
 
@@ -512,7 +508,11 @@ int main ( const int argc, const char *argv[] ) {
         usage( &desc );
         return 1;
     }
-    
+
+    char* dtxt  = new char[1024];
+    if ( vm.count("devices-txt") ) strncpy( dtxt, vm["devices-txt"].as<std::string>().c_str(), 1024 );
+    else dtxt = DEVTXT;
+
     if( init_blue(dtxt) == 0 ) { // Init btferret
         std::cerr << "btferret failed to init." << std::endl;
         return 2; 
