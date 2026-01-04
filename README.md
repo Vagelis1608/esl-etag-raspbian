@@ -7,6 +7,9 @@ The tag must be running my custom firmware from: https://github.com/Vagelis1608/
 or dirivative, since the entire format and communication "protocol" are custom.
 
 
+<!-- GitAds-Verify: MVPYJ782XE1DN3ZXOZC9G5UYVXNWWYPF -->
+
+
 ### Data
 
 Currently sends the following data to the tag, every 60 seconds (raspbian): Free and Total RAM, CPU Loads and Temperature, Local IP, Uptime
