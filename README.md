@@ -7,7 +7,10 @@ The tag must be running my custom firmware from: https://github.com/Vagelis1608/
 or dirivative, since the entire format and communication "protocol" are custom.
 
 
-<!-- GitAds-Verify: MVPYJ782XE1DN3ZXOZC9G5UYVXNWWYPF -->
+
+## GitAds Sponsored
+[![Sponsored by GitAds](https://gitads.dev/v1/ad-serve?source=vagelis1608/esl-etag-raspbian@github)](https://gitads.dev/v1/ad-track?source=vagelis1608/esl-etag-raspbian@github)
+
 
 
 ### Data
