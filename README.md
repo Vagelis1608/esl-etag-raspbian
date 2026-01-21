@@ -25,9 +25,14 @@ And the name once.
 ``` 
 git clone --recurse-submodules https://github.com/Vagelis1608/esl-etag-raspbian.git
 cd esl-etag-raspbian
-cmake . # v3.14 minimum
+mkdir build
+cd build
+cmake .. # v3.14 minimum
 make -j$( nproc )
 ```
+
+The compiled executable will be in build/uploader
+
 ```
 # Usage:
 $ ./uploader -h
