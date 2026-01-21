@@ -17,3 +17,10 @@ add_executable(uploader ${CMAKE_CURRENT_SOURCE_DIR}/uploader.cpp )
 set_property(TARGET uploader PROPERTY CXX_STANDARD 20)
 set_property(TARGET uploader PROPERTY CXX_STANDARD_REQUIRED ON)
 target_link_libraries(uploader PRIVATE Boost::json Boost::program_options cpr::cpr btlib)
+
+add_custom_command(
+  TARGET uploader
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND}
+  ARGS -E copy $<TARGET_FILE:uploader> ../
+  )

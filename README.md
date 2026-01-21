@@ -31,7 +31,7 @@ cmake .. # v3.14 minimum
 make -j$( nproc )
 ```
 
-The compiled executable will be in build/uploader
+The compiled executable will be in the repo folder, esl-etag-raspbian
 
 ```
 # Usage:
