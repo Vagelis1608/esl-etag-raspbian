@@ -4,9 +4,11 @@ project(uploaderProject)
 
 include(FetchContent)
 
+set(Boost_USE_STATIC_LIBS   ON)
 FetchContent_Declare(Boost URL https://github.com/boostorg/boost/releases/download/boost-1.90.0/boost-1.90.0-cmake.tar.gz)
 FetchContent_MakeAvailable(Boost)
 
+set(BUILD_SHARED_LIBS OFF)
 FetchContent_Declare(cpr GIT_REPOSITORY https://github.com/libcpr/cpr.git
                          GIT_TAG c492b4fed1fd7288eacec6fe8d89e37df78d373) # Replace with your desired git commit from: https://github.com/libcpr/cpr/releases
 FetchContent_MakeAvailable(cpr)
