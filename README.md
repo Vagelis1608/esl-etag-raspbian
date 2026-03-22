@@ -8,11 +8,6 @@ or dirivative, since the entire format and communication "protocol" are custom.
 
 
 
-## GitAds Sponsored
-[![Sponsored by GitAds](https://gitads.dev/v1/ad-serve?source=vagelis1608/esl-etag-raspbian@github)](https://gitads.dev/v1/ad-track?source=vagelis1608/esl-etag-raspbian@github)
-
-
-
 ### Data
 
 Currently sends the following data to the tag, every 60 seconds (raspbian): Free and Total RAM, CPU Loads and Temperature, Local IP, Uptime
