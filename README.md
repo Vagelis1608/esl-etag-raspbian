@@ -12,7 +12,7 @@ or dirivative, since the entire format and communication "protocol" are custom.
 
 Currently sends the following data to the tag, every 60 seconds (raspbian): Free and Total RAM, CPU Loads and Temperature, Local IP, Uptime
 
-And the name once.
+And the name every 60 minutes.
 
 
 ### Download and build

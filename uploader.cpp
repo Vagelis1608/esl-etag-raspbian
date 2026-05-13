@@ -28,6 +28,9 @@ extern "C" {
 // Open Hardware Monitor API Point 
 #define DATAJ "/data.json"
 
+// How often to send the names, in minutes. 0 to disable.
+#define NAMESTIMER 60
+
 // Write Characteristic
 #define TAG_LE_WAIT 750 // in ms, btferret default
 #define WCHAR_UUID "1F1F" //(( 0x1F<<8 ) + 0x1F )
@@ -509,7 +512,7 @@ int main ( const int argc, const char *argv[] ) {
         return 1;
     }
 
-    char* dtxt  = new char[1024];
+    char* dtxt = new char[1024];
     if ( vm.count("devices-txt") ) strncpy( dtxt, vm["devices-txt"].as<std::string>().c_str(), 1024 );
     else dtxt = DEVTXT;
 
@@ -598,10 +601,18 @@ int main ( const int argc, const char *argv[] ) {
         unsigned char message[20];
         const std::string apiPoint = (vm["pc-ip"].as<std::string>()) + DATAJ;
 
+#if ( NAMESTIMER > 0 )
+        uint32_t nameTimer = 0;
+#endif
+
         while (true) {
             loopTimer = std::time(0);
 
             if ( doLocal ) {
+#if ( NAMESTIMER > 0 )
+                if ( nameTimer >= 60 ) sysData.setName();
+#endif
+
                 sysData.refresh();
                 sysData.send();
                 disconnect_node( sysData.node );
@@ -627,6 +638,10 @@ int main ( const int argc, const char *argv[] ) {
                 } else {
                     connect_node( remData.node, CHANNEL_LE, 0 );
 
+#if ( NAMESTIMER > 0 )
+                    if ( nameTimer >= 60 ) remData.setName();
+#endif
+
                     if ( remData.startup == 0 ) remData.startup = std::time(0);
                     remData.refresh(&req.text);
                     remData.send();
@@ -636,6 +651,10 @@ int main ( const int argc, const char *argv[] ) {
                     attempts = 0;
                 }
             }
+
+#if ( NAMESTIMER > 0 )
+            if ( ++nameTimer >= NAMESTIMER ) nameTimer = 0;
+#endif
 
 #ifndef JSONDEBUG
             sleep( ( difftime( std::time(0), loopTimer ) < 60 ) ? ( 60 - difftime( std::time(0), loopTimer ) ) : 1 );
